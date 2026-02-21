@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+celery
+redis
+transformers
+torch
+requests
+pydantic
+gunicorn
+pytest
+pytest-asyncio
+scikit-learn
+joblib
+httpx
+python-dotenv
