@@ -1,18 +1,15 @@
 """
 app.py
 ======
-FastAPI entry point for Milestone 2.
-
-WHY /status ENDPOINT:
-  Without it you can only submit tickets — you can never show the result.
-  actually ran. GET /status/{ticket_id} reads from Redis after Celery processes.
+FastAPI entry point for Milestone 2 + Milestone 3 integration.
 
 Endpoints:
   GET  /                       → service info
-  GET  /health                 → redis + celery status
+  GET  /health                 → Redis + Celery status
   POST /submit                 → 202 Accepted, queues to Celery
   GET  /status/{ticket_id}     → result after processing
 """
+
 import json
 import redis as sync_redis
 from fastapi import FastAPI, HTTPException, status
@@ -21,12 +18,13 @@ from pydantic import BaseModel
 from milestone2.config import REDIS_URL
 from milestone2.worker import celery_app, process_ticket
 
-app = FastAPI(title="SmartSupport — Milestone 2", version="2.0.0")
+app = FastAPI(title="SmartSupport — Milestone 2/3", version="3.0.0")
 
+# Redis client to store results
 _redis = sync_redis.from_url(REDIS_URL)
 
 
-# ── Schema ────────────────────────────────────────────────────────────────────
+# ── Ticket Schema ─────────────────────────────────────────────────────────────
 class Ticket(BaseModel):
     ticket_id: str
     text: str
@@ -36,34 +34,39 @@ class Ticket(BaseModel):
 @app.get("/")
 def root():
     return {
-        "service": "SmartSupport Milestone 2",
-        "docs":    "/docs",
-        "submit":  "POST /submit",
-        "status":  "GET  /status/{ticket_id}",
-        "health":  "GET  /health",
+        "service": "SmartSupport Milestone 2/3",
+        "docs": "/docs",
+        "submit": "POST /submit",
+        "status": "GET /status/{ticket_id}",
+        "health": "GET /health",
     }
 
 
 @app.post("/submit", status_code=status.HTTP_202_ACCEPTED)
 def submit(ticket: Ticket):
     """
+    Submit a ticket for async processing.
+    
     Returns 202 immediately.
-    Celery picks up the task from Redis and processes it asynchronously.
-    Atomic lock inside worker prevents duplicate processing.
+    Celery worker will handle:
+      - Category classification
+      - Urgency scoring
+      - Semantic deduplication (Milestone 3)
+      - Ticket storm detection / Master Incident creation
     """
     task = process_ticket.delay(ticket.ticket_id, ticket.text)
     return {
-        "status":    "accepted",
+        "status": "accepted",
         "ticket_id": ticket.ticket_id,
-        "task_id":   task.id,
+        "task_id": task.id,
     }
 
 
 @app.get("/status/{ticket_id}")
 def get_status(ticket_id: str):
     """
-    Returns the classification result once Celery has processed the ticket.
-    Raises 404 if not yet processed or ticket_id is invalid.
+    Returns the processed ticket result from Redis.
+    Raises 404 if ticket is not yet processed or invalid ID.
     """
     raw = _redis.get(f"result:{ticket_id}")
     if not raw:
@@ -73,17 +76,23 @@ def get_status(ticket_id: str):
         )
     return json.loads(raw.decode())
 
+
 @app.get("/health")
 def health():
-    redis_ok  = False
+    """
+    Returns the health status of API, Redis, and Celery.
+    """
+    redis_ok = False
     celery_ok = False
 
+    # Check Redis
     try:
         _redis.ping()
         redis_ok = True
     except Exception:
         pass
 
+    # Check Celery
     try:
         inspector = celery_app.control.inspect(timeout=1)
         celery_ok = bool(inspector.ping())
