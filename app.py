@@ -5,47 +5,26 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import re
 
-# -------------------------
-# Load ML model
-# -------------------------
 with open("model.pkl", "rb") as f:
     vectorizer, model = pickle.load(f)
 
-# -------------------------
-# FastAPI instance
-# -------------------------
 app = FastAPI()
 
-# -------------------------
-# In-memory priority queue
-# -------------------------
 ticket_queue = []
 
-# -------------------------
-# Ticket Schema
-# -------------------------
 class Ticket(BaseModel):
     user_id: str
     message: str
 
-# -------------------------
-# Urgency Detector
-# -------------------------
 def detect_urgency(text):
     urgent_keywords = r"\b(broken|asap|urgent|immediately|down|not working)\b"
     return bool(re.search(urgent_keywords, text.lower()))
 
-# -------------------------
-# Classifier
-# -------------------------
 def classify_ticket(text):
     X = vectorizer.transform([text])
     prediction = model.predict(X)[0]
     return prediction
 
-# -------------------------
-# API Endpoint
-# -------------------------
 @app.post("/submit_ticket")
 def submit_ticket(ticket: Ticket):
     
@@ -74,9 +53,6 @@ def submit_ticket(ticket: Ticket):
         "priority": priority
     }
 
-# -------------------------
-# Get Next Ticket (Processing Simulation)
-# -------------------------
 @app.get("/next_ticket")
 def get_next_ticket():
     if not ticket_queue:
