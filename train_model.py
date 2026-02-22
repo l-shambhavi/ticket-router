@@ -27,7 +27,6 @@ X = vectorizer.fit_transform(texts)
 model = LogisticRegression()
 model.fit(X, labels)
 
-# Save model
 with open("model.pkl", "wb") as f:
     pickle.dump((vectorizer, model), f)
 
