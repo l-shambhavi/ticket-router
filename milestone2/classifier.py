@@ -77,4 +77,11 @@ def urgency_score(text: str) -> float:
     inputs  = _sen_tok(text, return_tensors="pt", truncation=True, max_length=512)
     outputs = _sen_mod(**inputs)
     probs   = F.softmax(outputs.logits, dim=1)
-    return round(float(probs[0][0]), 4)
+    return round(float(probs[0][0].detach()), 4)
+
+def warmup():
+    """Call once at worker startup to pre-load models before any requests arrive."""
+    print("[classifier] Warming up models...")
+    classify("warmup")
+    urgency_score("warmup")
+    print("[classifier] Warmup complete.")
