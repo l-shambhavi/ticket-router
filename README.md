@@ -42,11 +42,11 @@ A working minimum viable ticket router capable of automated classification and u
 
 ---
 
-## Milestone 2 — Intelligent Asynchronous Routing Engine
-### Objective
--In Milestone 2, we transformed the synchronous Minimum Viable Router into a scalable, production-ready asynchronous system. 
--Instead of processing tickets within the API request cycle, we integrated *Redis* as a message broker and *Celery* as a background worker, allowing FastAPI to immediately return a *202 Accepted* response while classification occurs asynchronously. 
--This decoupled architecture improves responsiveness, supports higher throughput, and enables concurrent processing without blocking the API.
+# Milestone 2 — Intelligent Asynchronous Routing Engine
+## Objective
+- In Milestone 2, we transformed the synchronous Minimum Viable Router into a scalable, production-ready asynchronous system. 
+- Instead of processing tickets within the API request cycle, we integrated *Redis* as a message broker and *Celery* as a background worker, allowing FastAPI to immediately return a *202 Accepted* response while classification occurs asynchronously. 
+- This decoupled architecture improves responsiveness, supports higher throughput, and enables concurrent processing without blocking the API.
 
 We replaced heuristic urgency detection with *transformer-based NLP models* that perform category classification (Billing, Technical, Legal) and generate a continuous urgency score S ∈ [0, 1]. High-urgency tickets automatically trigger real-time *Discord alerts. To ensure reliability, we implemented **atomic distributed locking* using Redis (SET NX EX) to prevent duplicate concurrent processing, added TTL-based fault tolerance, and introduced a /status/{ticket_id} endpoint for asynchronous result retrieval, creating a robust, scalable intelligent routing engine.
 
